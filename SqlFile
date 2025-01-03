@@ -1,0 +1,22 @@
+create database taxapp;
+
+use taxapp;
+
+create table property(
+id int auto_increment primary key,
+baseValue int not null,
+builtuparea int not null,
+age int not null,
+location char(1) not null,
+tax double default 0.0
+);
+
+create table vehicle(
+registerNo int not null,
+brand varchar(20) not null,
+velocity int not null,
+seatcapacity int not null,
+type int default null,
+price double default null,
+tax double default 0.0
+);
