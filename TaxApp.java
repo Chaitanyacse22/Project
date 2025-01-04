@@ -1,15 +1,19 @@
-package taxpackage;
-import java.sql.*;
-import java.util.*;
+package taxmodule;
 
-// Custom Exceptions
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.*;
+import java.sql.*;
+
 class InvalidInputException extends Exception {
     public InvalidInputException(String message) {
         super(message);
     }
 }
 
-// Base Tax Class
 abstract class Tax {
     protected static int idCounter = 1;
     protected int id;
@@ -17,7 +21,7 @@ abstract class Tax {
 
     public Tax() {
         this.id = idCounter++;
-        this.tax = 0.0; // Initially, the tax is not calculated
+        this.tax = 0.0;
     }
 
     public abstract void calculateTax();
@@ -29,7 +33,6 @@ abstract class Tax {
     }
 }
 
-// PropertyTax Class
 class PropertyTax extends Tax {
     private int baseValue;
     private int builtUpArea;
@@ -75,14 +78,14 @@ class PropertyTax extends Tax {
     }
 }
 
-// VehicleTax Class
+
 class VehicleTax extends Tax {
     private int registrNo;
     private String brand;
     private int velocity;
     private int seatCapacity;
-    private int type; // 1 for Petrol, 2 for Diesel, 3 for CNG
-    private double price; // Purchase cost
+    private int type;
+    private double price;
 
     public VehicleTax(int registrNo, String brand, int velocity, int seatCapacity) {
         super();
@@ -100,9 +103,9 @@ class VehicleTax extends Tax {
     @Override
     public void calculateTax() {
         switch (type) {
-            case 1 -> this.tax = velocity + seatCapacity + (0.01 * price); // Petrol
-            case 2 -> this.tax = velocity + seatCapacity + (0.11 * price); // Diesel
-            case 3 -> this.tax = velocity + seatCapacity + (0.12 * price); // CNG
+            case 1 -> this.tax = velocity + seatCapacity + (0.01 * price);
+            case 2 -> this.tax = velocity + seatCapacity + (0.11 * price);
+            case 3 -> this.tax = velocity + seatCapacity + (0.12 * price);
             default -> throw new IllegalArgumentException("Invalid fuel type!");
         }
     }
@@ -147,7 +150,7 @@ class VehicleTax extends Tax {
     }
 }
 
-// Welcome Class
+
 class Welcome {
     public static boolean input() {
         Scanner sc = new Scanner(System.in);
@@ -170,16 +173,15 @@ class Welcome {
     }
 }
 
-// Main Application Class
 public class TaxApp {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
 
         if (!Welcome.input()) {
-            System.exit(0); // Exit if authentication fails
+            System.exit(0);
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/taxapp", "root", "N#@98wrft45")) {
+        try(Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/taxapp", "root", "Password@12")) {
             while (true) {
                 try {
                     System.out.println("\n+-------------------------------------+");
@@ -203,7 +205,7 @@ public class TaxApp {
                     }
                 } catch (InputMismatchException e) {
                     System.out.println("Error: Invalid input type. Please enter a valid number.");
-                    sc.nextLine(); // Clear invalid input
+                    sc.nextLine();
                 } catch (InvalidInputException e) {
                     System.out.println("Error: " + e.getMessage());
                 }
@@ -429,29 +431,46 @@ public class TaxApp {
 
     private static void total(Connection conn) {
         try {
+        	int quantity = 0, quantity1 = 0;
             double totalPropertyTax = 0, totalVehicleTax = 0;
 
-            // Calculate total property tax
             try (Statement stmt = conn.createStatement()) {
                 ResultSet rs = stmt.executeQuery("SELECT SUM(tax) AS total FROM property");
                 if (rs.next()) {
                     totalPropertyTax = rs.getDouble("total");
                 }
             }
+            
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs = stmt.executeQuery("SELECT count(id) AS total FROM property");
+                if (rs.next()) {
+                    quantity = rs.getInt("total");
+                }
+            }
 
-            // Calculate total vehicle tax
             try (Statement stmt = conn.createStatement()) {
                 ResultSet rs = stmt.executeQuery("SELECT SUM(tax) AS total FROM vehicle");
                 if (rs.next()) {
                     totalVehicleTax = rs.getDouble("total");
                 }
             }
-
-            System.out.println("\n+-------------------------------------+");
-            System.out.printf("Total Property Tax: %.2f\n", totalPropertyTax);
-            System.out.printf("Total Vehicle Tax: %.2f\n", totalVehicleTax);
-            System.out.printf("Total Tax Payable: %.2f\n", totalPropertyTax + totalVehicleTax);
-            System.out.println("+-------------------------------------+");
+            
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs = stmt.executeQuery("SELECT count(registerNo) AS total FROM vehicle");
+                if (rs.next()) {
+                    quantity1 = rs.getInt("total");
+                }
+            }
+            
+            System.out.println("\n+-----------------------------------------------------------+");
+            System.out.printf("|%5s %15s %10s %20s      |\n", "SR No", "Particular", "Quantity", "Tax");
+            System.out.println("+-----------------------------------------------------------+");
+            System.out.printf("|%5d %15s %10d %20.2f      |\n", 1, "Properties", quantity, totalPropertyTax);
+            System.out.printf("|%5d %15s %10d %20.2f      |\n", 2, "Vehicles", quantity1, totalVehicleTax);
+            System.out.printf("|%5s %15s %10d %20.2f      |", "Total", "------------", quantity+quantity1, totalPropertyTax + totalVehicleTax);
+            System.out.println("\n+-----------------------------------------------------------+");
+            
+            
         } catch (SQLException e) {
             e.printStackTrace();
         }
